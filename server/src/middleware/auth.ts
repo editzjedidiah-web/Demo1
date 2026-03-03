@@ -1,41 +1,16 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 
-interface JwtPayload {
-  userId: number;
-  email: string;
-  role: string;
-}
+export const authenticateJWT = (req: Request, res: Response, next: NextFunction) => {
+  const token = req.headers.authorization?.split(' ')[1];
 
-declare global {
-  namespace Express {
-    interface Request {
-      user?: JwtPayload;
-    }
-  }
-}
-
-export const authenticate = (req: Request, res: Response, next: NextFunction) => {
-  const token = req.header('Authorization')?.replace('Bearer ', '');
-
-  if (!token) {
-    res.status(401).json({ message: 'Authentication required' });
-    return;
-  }
+  if (!token) return res.status(401).json({ message: 'Access Denied' });
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret') as JwtPayload;
-    req.user = decoded;
+    const verified = jwt.verify(token, process.env.JWT_SECRET || 'secret');
+    (req as any).user = verified;
     next();
-  } catch (error) {
-    res.status(401).json({ message: 'Invalid token' });
+  } catch (err) {
+    res.status(400).json({ message: 'Invalid Token' });
   }
-};
-
-export const authorizeProvider = (req: Request, res: Response, next: NextFunction) => {
-  if (req.user?.role !== 'provider' && req.user?.role !== 'admin') {
-    res.status(403).json({ message: 'Access denied: Providers only' });
-    return;
-  }
-  next();
 };
